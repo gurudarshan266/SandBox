@@ -155,11 +155,21 @@ int main(int argc, char** argv)
 
 					GetParentDirectory(filenm,parent_dir);
 
-					printf("\n\nSys Rename: filename = %s  ParentDir = %s  flags = %d", filenm, parent_dir,
+					printf("\n\nSys Rename: Filename = %s  flags = %d", filenm,
 							flags_to_check);
 
-					isRenameAllowed = CheckAccess(parent_dir, cs, configCount,
-							flags_to_check);
+					while(1)
+					{
+						printf("\nSys Rename: Checking permissions for directory \"%s\"",parent_dir);
+
+						isRenameAllowed &= CheckAccess(parent_dir, cs, configCount,
+								flags_to_check);
+
+						if(strcmp(parent_dir, "/")==0 || isRenameAllowed==0)
+							break;
+
+						GetParentDirectory(parent_dir,parent_dir);
+					}
 
 					//Rename permission is not allowed then send NULL as the source file name
 					if(!isRenameAllowed)

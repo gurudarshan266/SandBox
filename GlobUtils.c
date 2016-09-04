@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <linux/limits.h>
+#include <libgen.h>
 
 int GetFilesList(const char* pattr, char*** fileList, int* count)
 {
@@ -160,26 +161,12 @@ void DumpFileList(char** FileList, int count)
 
 void GetParentDirectory(char* fn, char* result)
 {
-	realpath(fn,result);
+	char* tmp = (char*)malloc(sizeof(char)*PATH_MAX);
+	realpath(fn,tmp);
 
-	int i;
-	int len = strlen(result);
+	strcpy(result,dirname(tmp));
 
-	/*Remove the text after last '/'
-	 * if fn is a directory, it might end with a '/' so ignore the last char always
-	 */
-
-	for (i = len - 2; i >= 0; i--) {
-		if (result[i] == '/') {
-			break;
-		}
-	}
-
-	if(i>0)
-		result[i] = '\0';
-	else if(i==0)
-		result[i+1] = '\0';
-
+	free(tmp);
 
 }
 //int main() {}
