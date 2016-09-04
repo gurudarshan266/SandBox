@@ -96,14 +96,19 @@ int main(int argc, char** argv)
 			sys_call_num = ptrace(PTRACE_PEEKUSER, child_pid, 8 * ORIG_RAX,	NULL);
 
 
+
 			switch(sys_call_num)
 			{
 				case SYS_open:
 				{
+					printf("\n\nPID = %d System Call = %ld",child_pid,sys_call_num);
+
 					if (isEntry == FALSE) {
 						isEntry = TRUE;
 
 						char *filenm = (char*)calloc(PATH_MAX,sizeof(char));
+						char *parent_dir = (char*) calloc(PATH_MAX, sizeof(char));
+
 						long rdi = GET_REG(child_pid, RDI, 0);
 						GetString(child_pid, rdi, filenm);
 
@@ -116,11 +121,17 @@ int main(int argc, char** argv)
 						int flags_to_check = 0;
 						flags_to_check |= ((read)?READ:0) | ((write)?WRITE:0);
 
+						//Check if the file's ancestor directories have permission
+						GetParentDirectory(filenm,parent_dir);
+						isOpenAllowed = CheckAncestorPermissions(filenm, parent_dir,EXEC,cs, configCount);
+
 						printf("\n\nSys Open: filename = %s flags = %d", filenm, flags_to_check);
 
-						isOpenAllowed = CheckAccess(filenm, cs, configCount, flags_to_check);
+						if(isOpenAllowed)
+							isOpenAllowed &= CheckAccess(filenm, cs, configCount, flags_to_check);
 
 						free(filenm);
+						free(parent_dir);
 					}
 
 					else
@@ -142,40 +153,46 @@ int main(int argc, char** argv)
 
 				case SYS_rename: /*Allow rename only when parent directory has execute permission*/
 				{
+					printf("\n\nPID = %d System Call = %ld",child_pid,sys_call_num);
+
 				if (isEntry == FALSE) {
 					isEntry = TRUE;
 
 					char *filenm = (char*) calloc(PATH_MAX, sizeof(char));
-					long rdi = GET_REG(child_pid, RDI, 0);
-					GetString(child_pid, rdi, filenm);
-
+					char *parent_dir = (char*) calloc(PATH_MAX, sizeof(char));
 					int flags_to_check = EXEC;
 
-					char *parent_dir = (char*) calloc(PATH_MAX, sizeof(char));
-
-					GetParentDirectory(filenm,parent_dir);
-
-					printf("\n\nSys Rename: Filename = %s  flags = %d", filenm,
-							flags_to_check);
-
-					while(1)
+					/* Source File */
 					{
-						printf("\nSys Rename: Checking permissions for directory \"%s\"",parent_dir);
+						long rdi = GET_REG(child_pid, RDI, 0);
+						GetString(child_pid, rdi, filenm);
 
-						isRenameAllowed &= CheckAccess(parent_dir, cs, configCount,
+						GetParentDirectory(filenm,parent_dir);
+
+						printf("\n\nSys Rename: Source Filename = %s  flags = %d", filenm,
 								flags_to_check);
 
-						if(strcmp(parent_dir, "/")==0 || isRenameAllowed==0)
-							break;
+						isRenameAllowed &= CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
+					}
 
-						GetParentDirectory(parent_dir,parent_dir);
+					/* Destination File */
+					{
+						long rsi = GET_REG(child_pid, RSI, 0);
+						GetString(child_pid, rsi, filenm);
+
+						GetParentDirectory(filenm,parent_dir);
+
+						printf("\n\nSys Rename: Dst Filename = %s  flags = %d", filenm,
+								flags_to_check);
+
+						isRenameAllowed &= CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
 					}
 
 					//Rename permission is not allowed then send NULL as the source file name
 					if(!isRenameAllowed)
 					{
 						SET_REG(child_pid, RDI, 0, NULL);
-						printf("\nNot allowing to rename the file");
+						printf("\nSys Rename: Not allowing to rename the file");
 					}
 
 					free(filenm);

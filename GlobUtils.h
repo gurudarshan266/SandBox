@@ -16,5 +16,6 @@ int CheckAccess(const char* file, ConfigStruct* cs, int configCount, int permiss
 int GlobMatch(const char* file, ConfigStruct* cs);
 void DumpFileList(char** FileList, int count);
 void GetParentDirectory(char* fn, char* result);
+int CheckAncestorPermissions(char* filenm, char* parent_dir,int flags_to_check,ConfigStruct* cs, int configCount);
 
 #endif /* GLOBUTILS_H_ */

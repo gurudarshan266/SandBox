@@ -27,16 +27,16 @@ int GetFilesList(const char* pattr, char*** fileList, int* count)
 		switch(result)
 		{
 			case GLOB_NOSPACE:
-				printf("Error occurred due to low memory ");
+				printf("\nError occurred due to low memory ");
 				break;
 			case GLOB_ABORTED:
-				printf("Error occurred while reading");
+				printf("\nError occurred while reading");
 				break;
 			case GLOB_NOMATCH:
-				printf("No matches were found for the pattern %s",pattr);
+				printf("\nNo matches were found for the pattern %s",pattr);
 				break;
 			default:
-				printf("Error occurred while fetching files list with error code = %d",result);
+				printf("\nError occurred while fetching files list with error code = %d",result);
 				break;
 		}
 #endif
@@ -168,6 +168,31 @@ void GetParentDirectory(char* fn, char* result)
 
 	free(tmp);
 
+}
+
+int CheckAncestorPermissions(char* filenm, char* parent_dir,int flags_to_check,ConfigStruct* cs, int configCount)
+{
+	int result = TRUE;
+
+	GetParentDirectory(filenm,parent_dir);
+
+	printf("\n\nFilename = %s  flags = %d", filenm,
+			flags_to_check);
+
+	while(1)
+	{
+		printf("\nChecking permissions for directory \"%s\"",parent_dir);
+
+		result &= CheckAccess(parent_dir, cs, configCount,
+				flags_to_check);
+
+		if(strcmp(parent_dir, "/")==0 || result==0)
+			break;
+
+		GetParentDirectory(parent_dir,parent_dir);
+	}
+
+	return result;
 }
 //int main() {}
 
