@@ -26,6 +26,6 @@ typedef struct configStruct ConfigStruct;
 
 //#define GET_REG(pid, regAddr) ptrace(PTRACE_PEEKUSER, pid, (regAddr*8), NULL)
 #define GET_REG(pid, regAddr, offset) ptrace(PTRACE_PEEKUSER, pid, (offset + 8*regAddr), NULL)
-#define SET_REG(pid, regAddr, offset, val) ptrace(PTRACE_PEEKUSER, pid, (offset + 8*regAddr), val)
+#define SET_REG(pid, regAddr, offset, val) ptrace(PTRACE_POKEUSER, pid, (offset + 8*regAddr), val)
 
 #endif /* SBDEFINES_H_ */

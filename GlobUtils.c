@@ -131,7 +131,7 @@ int CheckAccess(const char* file, ConfigStruct* cs, int configCount, int request
 	int write = (requested_permission & (WRITE))>>1;
 	int execute = (requested_permission & (EXEC))>>0;
 
-	int i, result = FALSE;
+	int i, result = TRUE;
 
 	for(i = 0; i<configCount;i++)
 	{

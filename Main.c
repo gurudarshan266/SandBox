@@ -66,10 +66,11 @@ int main(int argc, char** argv)
 	int configCount = 0;
 	ConfigStruct* cs = GenerateConfigStructs(configFile,&configCount);
 
-	/*Fork a child*/
-	pid_t child = fork();
 
-	if (child == 0)
+	/*Fork a child*/
+	pid_t child_pid = fork();
+
+	if (child_pid == 0)
 	{
 		ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		execl("/bin/sh", "sh", "test.sh", NULL);
@@ -81,15 +82,18 @@ int main(int argc, char** argv)
 		int status;
 		int isEntry = FALSE;//Start with true to not account execve sys call
 
-		int isOpenAllowed = FALSE;
+		int isOpenAllowed = TRUE;
+		int isRenameAllowed = TRUE;
 
 		while (1)
 		{
-			wait(&status);
+			child_pid = wait(&status);
 			if (WIFEXITED(status))
 				break;
 
-			sys_call_num = ptrace(PTRACE_PEEKUSER, child, 8 * ORIG_RAX,	NULL);
+			ptrace(PTRACE_SETOPTIONS, child_pid, 0,PTRACE_O_TRACECLONE|PTRACE_O_TRACEFORK);
+
+			sys_call_num = ptrace(PTRACE_PEEKUSER, child_pid, 8 * ORIG_RAX,	NULL);
 
 
 			switch(sys_call_num)
@@ -100,31 +104,35 @@ int main(int argc, char** argv)
 						isEntry = TRUE;
 
 						char *filenm = (char*)calloc(PATH_MAX,sizeof(char));
-						long rdi = GET_REG(child, RDI, 0);
-						GetString(child, rdi, filenm);
-						printf("\nSys Open: filename = %s", filenm);
+						long rdi = GET_REG(child_pid, RDI, 0);
+						GetString(child_pid, rdi, filenm);
 
-						int flags = GET_REG(child, RSI, 0);
+						int flags = GET_REG(child_pid, RSI, 0);
 
-						int read = ((flags&0x3) ==  O_RDONLY) || ((flags&0x3) == O_RDWR);
+						int read = ((flags&1) ==  O_RDONLY) || ((flags&0x2) == O_RDWR);
 
-						int write= ((flags&0x3) ==  O_WRONLY) || ((flags&0x3) == O_RDWR);
+						int write= ((flags&1) ==  O_WRONLY) || ((flags&0x2) == O_RDWR);
 
 						int flags_to_check = 0;
-						flags_to_check |= ((read)?1<<READ:0) | ((write)?1<<WRITE:0);
+						flags_to_check |= ((read)?READ:0) | ((write)?WRITE:0);
+
+						printf("\n\nSys Open: filename = %s flags = %d", filenm, flags_to_check);
 
 						isOpenAllowed = CheckAccess(filenm, cs, configCount, flags_to_check);
+
+						free(filenm);
 					}
 
 					else
 					{
-							long rax = GET_REG(child, RAX, 0);
-							printf("\nreturn val = %ld", rax);
+							long rax = GET_REG(child_pid, RAX, 0);
+							printf("\nSys Open: Return val = %ld", rax);
 
-							if(isOpenAllowed!=1 && rax>2)
+							if((isOpenAllowed == 0) && rax>2)
 							{
 								//TODO: Clean child's file descriptor
-								SET_REG(child, RAX, 0, EACCES);
+								SET_REG(child_pid, RAX, 0, -EACCES);
+								printf("\nDisallowing access to file");
 							}
 
 						isEntry = FALSE;
@@ -132,10 +140,50 @@ int main(int argc, char** argv)
 				}
 				break;
 
+				case SYS_rename:
+				{
+				if (isEntry == FALSE) {
+					isEntry = TRUE;
+
+					char *filenm = (char*) calloc(PATH_MAX, sizeof(char));
+					long rdi = GET_REG(child_pid, RDI, 0);
+					GetString(child_pid, rdi, filenm);
+
+					int flags_to_check = READ;
+
+					printf("\n\nSys Rename: filename = %s flags = %d", filenm,
+							flags_to_check);
+
+					isRenameAllowed = CheckAccess(filenm, cs, configCount,
+							flags_to_check);
+
+					if(!isRenameAllowed)
+					{
+						SET_REG(child_pid, RDI, 0, NULL);
+					}
+
+					free(filenm);
+				}
+
+				else {
+					long rax = GET_REG(child_pid, RAX, 0);
+					printf("\nSys Rename: Return val = %ld", rax);
+
+					if (isRenameAllowed == 0) {
+						//TODO: Clean child's file descriptor
+						SET_REG(child_pid, RAX, 0, -EACCES);
+						printf("\nDisallowing access to file");
+					}
+
+					isEntry = FALSE;
+				}
+			}
+				break;
+
 				default : break;
 			}
 
-			ptrace(PTRACE_SYSCALL, child, NULL, NULL);
+			ptrace(PTRACE_SYSCALL, child_pid, NULL, NULL);
 		}
 	}
 
