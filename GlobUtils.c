@@ -157,5 +157,30 @@ void DumpFileList(char** FileList, int count)
 	for(i=0;i<(int)count;i++)
 		printf("\n%s",FileList[i]);
 }
+
+void GetParentDirectory(char* fn, char* result)
+{
+	realpath(fn,result);
+
+	int i;
+	int len = strlen(result);
+
+	/*Remove the text after last '/'
+	 * if fn is a directory, it might end with a '/' so ignore the last char always
+	 */
+
+	for (i = len - 2; i >= 0; i--) {
+		if (result[i] == '/') {
+			break;
+		}
+	}
+
+	if(i>0)
+		result[i] = '\0';
+	else if(i==0)
+		result[i+1] = '\0';
+
+
+}
 //int main() {}
 

@@ -15,5 +15,6 @@ int Find(const char* fileName, char** fileList, int count, int);
 int CheckAccess(const char* file, ConfigStruct* cs, int configCount, int permission);
 int GlobMatch(const char* file, ConfigStruct* cs);
 void DumpFileList(char** FileList, int count);
+void GetParentDirectory(char* fn, char* result);
 
 #endif /* GLOBUTILS_H_ */

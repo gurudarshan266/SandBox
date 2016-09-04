@@ -140,7 +140,7 @@ int main(int argc, char** argv)
 				}
 				break;
 
-				case SYS_rename:
+				case SYS_rename: /*Allow rename only when parent directory has execute permission*/
 				{
 				if (isEntry == FALSE) {
 					isEntry = TRUE;
@@ -149,31 +149,32 @@ int main(int argc, char** argv)
 					long rdi = GET_REG(child_pid, RDI, 0);
 					GetString(child_pid, rdi, filenm);
 
-					int flags_to_check = READ;
+					int flags_to_check = EXEC;
 
-					printf("\n\nSys Rename: filename = %s flags = %d", filenm,
+					char *parent_dir = (char*) calloc(PATH_MAX, sizeof(char));
+
+					GetParentDirectory(filenm,parent_dir);
+
+					printf("\n\nSys Rename: filename = %s  ParentDir = %s  flags = %d", filenm, parent_dir,
 							flags_to_check);
 
-					isRenameAllowed = CheckAccess(filenm, cs, configCount,
+					isRenameAllowed = CheckAccess(parent_dir, cs, configCount,
 							flags_to_check);
 
+					//Rename permission is not allowed then send NULL as the source file name
 					if(!isRenameAllowed)
 					{
 						SET_REG(child_pid, RDI, 0, NULL);
+						printf("\nNot allowing to rename the file");
 					}
 
 					free(filenm);
+					free(parent_dir);
 				}
 
 				else {
 					long rax = GET_REG(child_pid, RAX, 0);
 					printf("\nSys Rename: Return val = %ld", rax);
-
-					if (isRenameAllowed == 0) {
-						//TODO: Clean child's file descriptor
-						SET_REG(child_pid, RAX, 0, -EACCES);
-						printf("\nDisallowing access to file");
-					}
 
 					isEntry = FALSE;
 				}
