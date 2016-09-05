@@ -9,8 +9,9 @@
 #define GLOBUTILS_H_
 
 #include "SbDefines.h"
+#include <glob.h>
 
-int GetFilesList(const char* pattr, char*** fileList, int* count);
+int GetFilesList(const char* pattr, glob_t *glob_result);
 int Find(const char* fileName, char** fileList, int count, int);
 int CheckAccess(const char* file, ConfigStruct* cs, int configCount, int permission);
 int GlobMatch(const char* file, ConfigStruct* cs);

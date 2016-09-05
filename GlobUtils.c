@@ -15,11 +15,11 @@
 #include <linux/limits.h>
 #include <libgen.h>
 
-int GetFilesList(const char* pattr, char*** fileList, int* count)
+int GetFilesList(const char* pattr, glob_t *glob_result)
 {
-	glob_t glob_result;
+//	glob_t glob_result;
 
-	int result = glob(pattr, GLOB_TILDE, NULL, &glob_result);
+	int result = glob(pattr, GLOB_TILDE, NULL, glob_result);
 
 	if(result != 0)//Error has occurred
 	{
@@ -43,19 +43,19 @@ int GetFilesList(const char* pattr, char*** fileList, int* count)
 		return result;
 	}
 
+#if 0
 	//Copies the string array to a new array
-	*count = glob_result.gl_pathc;
-	*fileList = (char**) malloc(sizeof(char*)*glob_result.gl_pathc);
+	*count = glob_result->gl_pathc;
+	*fileList = (char**) malloc(sizeof(char*)*glob_result->gl_pathc);
 
 	int k;
 	for(k=0; k<*count;k++)
 	{
-		(*fileList)[k] = (char*) malloc( sizeof(char) * (strlen(glob_result.gl_pathv[k])+1) );
-		strcpy((*fileList)[k],glob_result.gl_pathv[k]);
+		(*fileList)[k] = (char*) malloc( sizeof(char) * (strlen(glob_result->gl_pathv[k])+1) );
+		strcpy((*fileList)[k],glob_result->gl_pathv[k]);
 	}
+#endif
 
-
-	globfree(&glob_result);
 
 	return result;
 }
@@ -101,21 +101,25 @@ int Find(const char* fileName, char** fileList, int count, int useAbsPath)
 
 int GlobMatch(const char* file, ConfigStruct* cs)
 {
+	glob_t glob_result;
+
 	char** fileList;
 	int count = 0;
 
-	int err = GetFilesList(cs->pattr, &fileList, &count);
+	int err = GetFilesList(cs->pattr, &glob_result);
+	fileList = glob_result.gl_pathv;
+	count = glob_result.gl_pathc;
 
 	if(err == 0) //Glob call was successful
 	{
 		int res = Find(file, fileList, count, TRUE);
 
-		//Clean up FileList memory
 		if(fileList)
 		{
-//			int i;
 //			DumpFileList(fileList, count);
 		}
+
+		globfree(&glob_result);
 
 		return res;
 	}
