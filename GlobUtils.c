@@ -191,7 +191,10 @@ int CheckAncestorPermissions(char* filenm, char* parent_dir,int flags_to_check,C
 				flags_to_check);
 
 		if(strcmp(parent_dir, "/")==0 || result==0)
+		{
+			printf("\nOne of the ancestors did not have the right permission");
 			break;
+		}
 
 		GetParentDirectory(parent_dir,parent_dir);
 	}

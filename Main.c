@@ -84,6 +84,7 @@ int main(int argc, char** argv)
 
 		int isOpenAllowed = TRUE;
 		int isRenameAllowed = TRUE;
+		int isStatAllowed = TRUE;
 
 		while (1)
 		{
@@ -99,6 +100,7 @@ int main(int argc, char** argv)
 
 			switch(sys_call_num)
 			{
+				/* OPEN */
 				case SYS_open:
 				{
 					printf("\n\nPID = %d System Call = %ld",child_pid,sys_call_num);
@@ -153,6 +155,9 @@ int main(int argc, char** argv)
 				}
 				break;
 
+
+
+				/* RENAME */
 				case SYS_rename: /*Allow rename only when parent directory has execute permission*/
 				{
 					printf("\n\nPID = %d System Call = %ld",child_pid,sys_call_num);
@@ -174,7 +179,10 @@ int main(int argc, char** argv)
 						printf("\n\nSys Rename: Source Filename = %s  flags = %d", filenm,
 								flags_to_check);
 
-						isRenameAllowed &= CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
+						isRenameAllowed = CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
+
+						if(isRenameAllowed)
+							isRenameAllowed &= CheckAccess(filenm, cs, configCount, READ);
 					}
 
 					/* Destination File */
@@ -187,7 +195,11 @@ int main(int argc, char** argv)
 						printf("\n\nSys Rename: Dst Filename = %s  flags = %d", filenm,
 								flags_to_check);
 
+
 						isRenameAllowed &= CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
+
+						if(isRenameAllowed)
+								isRenameAllowed &= CheckAccess(filenm, cs, configCount, WRITE);
 					}
 
 					//Rename permission is not allowed then send NULL as the source file name
@@ -205,7 +217,57 @@ int main(int argc, char** argv)
 					long rax = GET_REG(child_pid, RAX, 0);
 					printf("\nSys Rename: Return val = %ld", rax);
 
-					if((isOpenAllowed == 0) && rax>2)
+					if(isRenameAllowed == 0)
+					{
+						SET_REG(child_pid, RAX, 0, -EACCES);
+					}
+					isEntry = FALSE;
+				}
+			}
+				break;
+
+
+
+
+
+				/*ACCESS, STAT and LSTAT */
+				case SYS_stat:
+				case SYS_lstat:
+				{
+					printf("\n\nPID = %d System Call = %ld",child_pid,sys_call_num);
+
+				if (isEntry == FALSE) {
+					isEntry = TRUE;
+
+					char *filenm = (char*) calloc(PATH_MAX, sizeof(char));
+					char *parent_dir = (char*) calloc(PATH_MAX, sizeof(char));
+					int flags_to_check = EXEC;
+
+					long rdi = GET_REG(child_pid, RDI, 0);
+					GetString(child_pid, rdi, filenm);
+
+					GetParentDirectory(filenm,parent_dir);
+
+					printf("\nSys (l)stat: Source Filename = %s  flags = %d", filenm,
+							flags_to_check);
+
+					isStatAllowed = CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
+
+					if(!isStatAllowed)
+					{
+						SET_REG(child_pid, RDI, 0, NULL);
+						printf("\nSys (l)stat: Not allowing access to the file");
+					}
+
+					free(filenm);
+					free(parent_dir);
+				}
+
+				else {
+					long rax = GET_REG(child_pid, RAX, 0);
+					printf("\nSys (l)stat: Return val = %ld", rax);
+
+					if(isStatAllowed == 0)
 					{
 						SET_REG(child_pid, RAX, 0, -EACCES);
 					}
