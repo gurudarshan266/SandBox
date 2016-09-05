@@ -116,10 +116,12 @@ int main(int argc, char** argv)
 
 						int read = ((flags&1) ==  O_RDONLY) || ((flags&0x2) == O_RDWR);
 
-						int write= ((flags&1) ==  O_WRONLY) || ((flags&0x2) == O_RDWR);
+						int write = ((flags&1) ==  O_WRONLY) || ((flags&0x2) == O_RDWR);
+
+						int exec =  ((flags&__O_CLOEXEC) != 0);
 
 						int flags_to_check = 0;
-						flags_to_check |= ((read)?READ:0) | ((write)?WRITE:0);
+						flags_to_check |= ((read)?READ:0) | ((write)?WRITE:0) | ((exec)?EXEC:0);
 
 						//Check if the file's ancestor directories have permission
 						GetParentDirectory(filenm,parent_dir);
@@ -203,6 +205,10 @@ int main(int argc, char** argv)
 					long rax = GET_REG(child_pid, RAX, 0);
 					printf("\nSys Rename: Return val = %ld", rax);
 
+					if((isOpenAllowed == 0) && rax>2)
+					{
+						SET_REG(child_pid, RAX, 0, -EACCES);
+					}
 					isEntry = FALSE;
 				}
 			}
