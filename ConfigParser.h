@@ -11,5 +11,6 @@
 #include "SbDefines.h"
 
 ConfigStruct* GenerateConfigStructs(const char* configFile, int* count);
+int Tokenize(char* str, char* pattr, int* permission);
 
 #endif /* CONFIGPARSER_H_ */

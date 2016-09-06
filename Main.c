@@ -73,7 +73,8 @@ int main(int argc, char** argv)
 	if (child_pid == 0)
 	{
 		ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-		execl("/bin/sh", "sh", "test.sh", NULL);
+//		execl("/bin/sh", "sh", "test.sh", NULL);
+		execl("../a.out", "../a.out",NULL);
 		return -1;
 	}
 	else
@@ -89,8 +90,6 @@ int main(int argc, char** argv)
 
 		while (1)
 		{
-			//TODO: Completion of one child process breaks the loop
-
 			child_pid = wait(&status);
 
 			if (WIFEXITED(status))
@@ -345,22 +344,4 @@ int main(int argc, char** argv)
 	}
 
 
-
-#ifdef DEBUG2
-	int err = GetFilesList(pattr, &filelist, &count);
-	if(err == 0)
-	{
-		int exists = Find(fileName,filelist, count);
-		printf("\n%s Exists = %d\n", fileName, exists);
-	}
-
-
-	if(err == 0)
-	{
-		printf("\nCount = %d ",count);
-		int i;
-		for(i=0;i<(int)count;i++)
-			printf("\n%s",filelist[i]);
-	}
-#endif
 }

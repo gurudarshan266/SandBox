@@ -9,7 +9,7 @@
 #define SBDEFINES_H_
 
 struct configStruct {
-	char pattr[50];
+	char pattr[1024];
 	int read;
 	int write;
 	int execute;
