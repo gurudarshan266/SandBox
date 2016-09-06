@@ -85,12 +85,23 @@ int main(int argc, char** argv)
 		int isOpenAllowed = TRUE;
 		int isRenameAllowed = TRUE;
 		int isStatAllowed = TRUE;
+		int isChdirAllowed = TRUE;
 
 		while (1)
 		{
+			//TODO: Completion of one child process breaks the loop
+
 			child_pid = wait(&status);
+
 			if (WIFEXITED(status))
-				break;
+			{
+				if(child_pid == -1 && errno==ECHILD)
+				{
+					printf("\n\nMain program exiting as no more children processes are present");
+					break;
+				}
+				printf ("\n\nProcess %d exited",child_pid);
+			}
 
 			ptrace(PTRACE_SETOPTIONS, child_pid, 0,PTRACE_O_TRACECLONE|PTRACE_O_TRACEFORK);
 
@@ -230,7 +241,7 @@ int main(int argc, char** argv)
 
 
 
-				/*ACCESS, STAT and LSTAT */
+				/*STAT and LSTAT */
 				case SYS_stat:
 				case SYS_lstat:
 				{
@@ -269,6 +280,7 @@ int main(int argc, char** argv)
 
 					if(isStatAllowed == 0)
 					{
+						printf("\nSys (l)stat: Setting return val to EACCES");
 						SET_REG(child_pid, RAX, 0, -EACCES);
 					}
 					isEntry = FALSE;
@@ -276,6 +288,55 @@ int main(int argc, char** argv)
 			}
 				break;
 
+
+
+				/* CHDIR */
+				case SYS_chdir:
+				{
+					printf("\n\nPID = %d System Call = %ld",child_pid,sys_call_num);
+
+				if (isEntry == FALSE) {
+					isEntry = TRUE;
+
+					char *filenm = (char*) calloc(PATH_MAX, sizeof(char));
+					char *parent_dir = (char*) calloc(PATH_MAX, sizeof(char));
+					int flags_to_check = EXEC;
+
+					long rdi = GET_REG(child_pid, RDI, 0);
+					GetString(child_pid, rdi, filenm);
+
+					GetParentDirectory(filenm,parent_dir);
+
+					printf("\nSys chdir: Source Filename = %s  flags = %d", filenm,
+							flags_to_check);
+
+					isChdirAllowed = CheckAccess(filenm, cs, configCount, EXEC);//Check if the destination directory has execute permission
+
+					isChdirAllowed &= CheckAncestorPermissions(filenm, parent_dir,flags_to_check,cs, configCount);
+
+					if(!isChdirAllowed)
+					{
+						SET_REG(child_pid, RDI, 0, NULL);
+						printf("\nSys chdir: Not allowing access to the file");
+					}
+
+					free(filenm);
+					free(parent_dir);
+				}
+
+				else {
+					long rax = GET_REG(child_pid, RAX, 0);
+					printf("\nSys chdir: Return val = %ld", rax);
+
+					if(isChdirAllowed == 0)
+					{
+						printf("\nSys chdir: Setting return val to EACCES");
+						SET_REG(child_pid, RAX, 0, -EACCES);
+					}
+					isEntry = FALSE;
+				}
+				}
+			break;
 				default : break;
 			}
 

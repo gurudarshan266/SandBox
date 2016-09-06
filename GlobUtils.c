@@ -180,19 +180,20 @@ int CheckAncestorPermissions(char* filenm, char* parent_dir,int flags_to_check,C
 
 	GetParentDirectory(filenm,parent_dir);
 
-	printf("\n\nFilename = %s  flags = %d", filenm,
+	printf("\n\nFilename = \"%s\"  flags = %d", filenm,
 			flags_to_check);
 
 	while(1)
 	{
-		printf("\nChecking permissions for directory \"%s\"",parent_dir);
+//		printf("\nChecking permissions for directory \"%s\"",parent_dir);
 
 		result &= CheckAccess(parent_dir, cs, configCount,
 				flags_to_check);
 
 		if(strcmp(parent_dir, "/")==0 || result==0)
 		{
-			printf("\nOne of the ancestors did not have the right permission");
+			if(result==0)
+				printf("\nOne of the ancestors did not have the right permission");
 			break;
 		}
 
